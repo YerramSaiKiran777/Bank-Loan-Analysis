@@ -1,0 +1,179 @@
+Select * from bank_loan_data;
+
+-- ==================================================== Query1: ======================================================================== 
+-- Find the percentage change in the total loan amount issued from the previous month to the current month?
+
+-- Purpose
+-- This analysis helps to monitor the trend in loan issuance by comparing the total loan amounts issued in the current month with the previous month and to 
+-- identify any increases or decreases in the loan activity.
+
+With pre_month_loan_amt as
+(
+Select Sum(loan_amount) as pre_mth_loan_amt
+From bank_loan_data
+Where 
+	Year(issue_date) = (Select Year(Date_Sub(max(issue_date), Interval 1 Month)) from bank_loan_data) 
+    And month(issue_date) = (Select Month(Date_sub(max(issue_date), Interval 1 Month)) from bank_loan_data)
+),
+
+cur_month_loan_amt as
+(
+Select Sum(loan_amount) as cur_mth_loan_amt
+From bank_loan_data
+Where 
+	Year(issue_date) = (Select Year(max(issue_date)) from bank_loan_data) 
+    And month(issue_date) = (Select Month(max(issue_date)) from bank_loan_data)
+)
+
+Select 
+	cur_mth_loan_amt,
+	pre_mth_loan_amt,
+	Round((cur_mth_loan_amt - pre_mth_loan_amt) * 100/pre_mth_loan_amt, 2) as "chg %"
+From (pre_month_loan_amt, cur_month_loan_amt);
+-- ==========================================================================================================
+
+
+
+-- ===================================================== Query2: ================================================
+-- Create a Loan Status grid view report categorized by 'Loan Status' 
+
+-- Metrics to be included in this grid view: 
+-- 		Total Loan Applications, Total Funded Amount, Total Amount Received,
+-- 		Average Interest Rate, Average Debt-to-Income Ratio (DTI) along with Month-to-Date (MTD) Funded Amount and MTD Amount Received.
+
+-- Purpose: This analysis provides a comprehensive overview of the lending operations and offers insights about fundings, repayments, 
+-- no of good loans (if loan status = Fully Paid or Current) and bad loans and thus allowing for monitoring of the performance of lendings
+
+
+with additional_data as
+(
+	Select
+		loan_status,
+		Concat(Round(Sum(loan_amount)/1000000,2), "M") as mtd_funded_amount,
+        Concat(Round(Sum(total_payment)/1000000,2), "M") as mtd_received_amount
+	From bank_loan_data
+    Where 
+		Year(issue_date) = (Select Year(max(issue_date)) From bank_loan_data)
+        And Month(issue_date) = (Select Month(max(issue_date)) From bank_loan_data)
+	Group by loan_status
+)
+Select
+	bk.loan_status,
+	Count(id) as total_loan_applications,
+    Round(Count(id)*100 / (select count(id) from bank_loan_data), 2) as "%_of_total_applications",
+    Concat(Round(Sum(loan_amount)/1000000,2), "M") as total_funded_amount,
+    Concat(Round(Sum(total_payment)/1000000,2), "M") as total_received_amount,
+    mtd_funded_amount,
+    mtd_received_amount,
+    Round(Avg(int_rate)*100, 2) as avg_interest_rate,
+    Round(Avg(dti)*100, 2) as avg_dti
+From bank_loan_data bk
+Join additional_data ad
+	On bk.loan_status = ad.loan_status
+Group by loan_status;
+
+-- ==================================================================================================================
+
+
+
+-- ==================================================== Query3: ================================================
+-- Find the % of good loan and bad loan applications
+
+-- Purpose : This calculates the overall loan performance by determining the percentage of successful (fully paid or current) loans vs charged-off loans,
+-- providing insights into portfolio health and lending behaviour.
+
+Select
+	Round(Count(Case When loan_status = "Fully Paid" Or loan_status = "Current" Then id End) * 100 / Count(id), 2) as good_loans_pct,
+    Round(Count(Case When loan_status = "Charged Off" Then id End) * 100 / Count(id), 2) as bad_loans_pct
+From bank_loan_data;
+-- ===============================================================================================================
+
+
+
+-- ========================================== Query4: =============================================================
+--  Analyze the loan applications by Loan Purpose Breakdown
+
+-- Purpose: Identifying the high-demand loan purposes can drive us to make optimized 
+-- lending strategies (like making changes in the interest rates) to attract more customers
+
+Select
+	purpose as loan_purpose,
+	Count(id) as total_loan_applications,
+    Concat(Round(Sum(loan_amount)/1000000,2), "M") as total_funded_amount
+From bank_loan_data
+Group by purpose
+Order by total_loan_applications Desc;
+-- ============================================================================================================
+
+
+-- =================================================== Query5: ================================================
+-- Create a stored procedure to spot top 5 states with the highest profit from fully paid loans for a given month and year
+
+-- Purpose: This identifies states contributing most to overall profitability and enables us to make a better risk assessment and resource allocation strategies.
+
+Select
+	address_state,
+    Count(Case When loan_status = "Fully Paid" Then id End) as loans_count,
+    Sum(Case When loan_status = "Fully Paid" Then (total_payment - loan_amount) End) as profit
+From bank_loan_data
+Where 
+	year(issue_date) = 2021 
+    and month(issue_date) = 1
+Group by address_state
+Order by loans_count desc
+Limit 5;
+
+-- USE THE BELOW CODE TO CREATE A STORED PROCEDURE:
+
+-- CREATE DEFINER=`root`@`localhost` PROCEDURE `top_n_states_by_profit`(
+-- In in_year Int,
+-- In in_month_num Int 
+-- )
+-- BEGIN
+-- Select
+-- 	address_state,
+--     Count(Case When loan_status = "Fully Paid" Then id End) as loans_count,
+--     Sum(Case When loan_status = "Fully Paid" Then (total_payment - loan_amount) End) as profit
+-- From bank_loan_data
+-- Where 
+-- 	year(issue_date) = in_year 
+--     and month(issue_date) = in_month_num
+-- Group by address_state
+-- Order by profit desc
+-- Limit 5;
+-- End
+-- ================================================================================================================================
+
+
+
+-- ============================================================ Query6 : ============================================================
+-- Identify the top sub-grade within each loan grade that have the highest number of charged-off loans
+
+-- Purpose : This information can be useful for understanding riskier segments within each grade and potentially adjusting lending criteria
+
+WITH grades_data AS (
+    SELECT 
+        grade,
+        sub_grade,
+        COUNT(*) AS total_loans,
+        Count(Case When loan_status = "Charged Off" Then id End) as charged_off_loans,
+        Round(Count(Case When loan_status = "Charged Off" Then id End)*100/Count(id),2) as charged_off_loans_pct
+    FROM bank_loan_data
+    GROUP BY grade, sub_grade
+),
+ranked_sub_grades AS (
+    SELECT
+        *,
+        dense_rank() OVER (PARTITION BY grade ORDER BY charged_off_loans DESC) AS sub_grade_ranking
+    FROM grades_data
+)
+SELECT
+    grade,
+    sub_grade,
+    total_loans,
+    charged_off_loans,
+    charged_off_loans_pct
+FROM ranked_sub_grades
+WHERE sub_grade_ranking = 1
+ORDER BY grade desc, charged_off_loans_pct desc;
+-- ============================================================================================================
