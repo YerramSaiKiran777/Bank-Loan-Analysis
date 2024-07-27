@@ -15,7 +15,7 @@ Examine the bank's loans data provided by the client to draw useful information 
 - Created a comprehensive schema and imported dataset seamlessly into it.
 - Analysed loan_status field to find the good loans and bad loans percentage.
 - Examined:
-        -- issue-date field to find the monthly trend of loan lending’s
+        -- issue-date field to find the monthly trend of loan lending’s <br>
         -- purpose field to identify the purpose with highest no of loans taken
         -- subgrade field to find the most risk associated category of loans issued.
 - Implemented SQL concepts such as:
