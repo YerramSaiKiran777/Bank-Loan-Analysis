@@ -4,12 +4,12 @@ This repository is related to the analysis of loans issued by bank. Used SQL to 
 # Task:
 Examine the bank's loans data provided by the client to draw useful information that helps the bank to understand it's lending activities, fundings, credit risks and the repayment behaviour to take data-driven actions and design operational strategies to mitigate the risk, improve the profitability and maintain the financial health of the bank.
 
-# Dataset Description:
--- The dataset provided contains 38K records
--- Each record refers to an approved loan and identified by a unique id
--- Provided cols, address_state, application type, loan_amount, term and purpose add more details to each of the loan
--- Grades and sub_grade details are useful to acknowledge the risk associate with each loan
--- Loan_status field carries details whether a loan is currently active, completed or charged off.
+# Dataset Description: <br>
+-- The dataset provided contains 38K records <br>
+-- Each record refers to an approved loan and identified by a unique id <br>
+-- Provided cols, address_state, application type, loan_amount, term and purpose add more details to each of the loan <br>
+-- Grades and sub_grade details are useful to acknowledge the risk associate with each loan <br>
+-- Loan_status field carries details whether a loan is currently active, completed or charged off. <br>
 
 # Details of the project:
 - Created a comprehensive schema and imported dataset seamlessly into it.
