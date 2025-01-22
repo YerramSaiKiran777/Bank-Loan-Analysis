@@ -41,9 +41,5 @@ Examine the bank's loans data provided by the client to draw useful information 
 - 'G2' is the most risk associated category with 35.9% charged off loans at subgrade level 
 
 
-# Source: 
-This project is available in DataTutorials youtube channel <br>
-**Link**: https://www.youtube.com/watch?v=bakn6HGemyM <br>
-Note: I have used this dataset to frame few own questions and perform my own analysis. So, the questions and the SQL queries mentioned in my analysis may differ from source content. <br>
 
 Thanks for reading!
